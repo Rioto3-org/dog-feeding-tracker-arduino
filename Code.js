@@ -1,6 +1,7 @@
 var SPREADSHEET_ID_PROPERTY = 'SPREADSHEET_ID';
 var SHEET_NAME_PROPERTY = 'SHEET_NAME';
 var DEFAULT_SHEET_NAME = 'logs';
+var DEFAULT_SPREADSHEET_ID = '1rmPdmkUiGT1GV1hMwLLwoebF1rkY9OyoPEO47RwujIw';
 
 function doGet(e) {
   var result = logTouchEvent_(e);
@@ -9,6 +10,15 @@ function doGet(e) {
   return ContentService.createTextOutput(message).setMimeType(
     ContentService.MimeType.TEXT
   );
+}
+
+function setupScriptProperties() {
+  var properties = PropertiesService.getScriptProperties();
+
+  properties.setProperties({
+    SPREADSHEET_ID: DEFAULT_SPREADSHEET_ID,
+    SHEET_NAME: DEFAULT_SHEET_NAME,
+  });
 }
 
 function logTouchEvent_(e) {
