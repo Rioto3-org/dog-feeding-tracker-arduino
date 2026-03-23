@@ -20,6 +20,19 @@ function doGet(e) {
   );
 }
 
+function testMain() {
+  var result = main({
+    parameter: {
+      token: 'test-token',
+    },
+    pathInfo: 'test',
+    queryString: 'token=test-token',
+  });
+
+  console.log(JSON.stringify(result));
+  return result;
+}
+
 function main(e) {
   var currentDate = getCurrentDate_();
   var currentSlot = resolveCurrentSlot_();
