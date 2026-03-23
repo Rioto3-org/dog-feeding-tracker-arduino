@@ -1,10 +1,11 @@
 var SPREADSHEET_ID_PROPERTY = 'SPREADSHEET_ID';
 var SHEET_NAME_PROPERTY = 'SHEET_NAME';
 var DEFAULT_SHEET_NAME = 'logs';
-var DEFAULT_SPREADSHEET_ID = '1rmPdmkUiGT1GV1hMwLLwoebF1rkY9OyoPEO47RwujIw';
+var LOG_TIME_ZONE = 'Asia/Tokyo';
+var LOG_TIMESTAMP_FORMAT = 'yyyy-MM-dd HH:mm:ss';
 
 function doGet(e) {
-  var result = logTouchEvent_(e);
+  var result = main(e);
   var message = result.ok ? 'Hello world!' : 'Hello world! (log skipped)';
 
   return ContentService.createTextOutput(message).setMimeType(
@@ -12,13 +13,8 @@ function doGet(e) {
   );
 }
 
-function setupScriptProperties() {
-  var properties = PropertiesService.getScriptProperties();
-
-  properties.setProperties({
-    SPREADSHEET_ID: DEFAULT_SPREADSHEET_ID,
-    SHEET_NAME: DEFAULT_SHEET_NAME,
-  });
+function main(e) {
+  return logTouchEvent_(e);
 }
 
 function logTouchEvent_(e) {
@@ -27,7 +23,7 @@ function logTouchEvent_(e) {
     var params = (e && e.parameter) || {};
 
     sheet.appendRow([
-      new Date(),
+      getCurrentTimestamp_(),
       'touch',
       params.token || '',
       getPathInfo_(e),
@@ -75,4 +71,8 @@ function getQueryString_(e) {
   }
 
   return e.queryString || '';
+}
+
+function getCurrentTimestamp_() {
+  return Utilities.formatDate(new Date(), LOG_TIME_ZONE, LOG_TIMESTAMP_FORMAT);
 }
