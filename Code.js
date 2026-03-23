@@ -5,10 +5,15 @@ var LINE_TO_PROPERTY = 'LINE_TO';
 var DEFAULT_SHEET_NAME = 'logs';
 var LOG_TIME_ZONE = 'Asia/Tokyo';
 var LOG_TIMESTAMP_FORMAT = 'yyyy-MM-dd HH:mm:ss';
+var LOG_DATE_FORMAT = 'yyyy-MM-dd';
+var MORNING_SLOT = 'morning';
+var EVENING_SLOT = 'evening';
+var MORNING_UNLOCK_TIME = '06:30';
+var EVENING_UNLOCK_TIME = '16:30';
 
 function doGet(e) {
   var result = main(e);
-  var message = result.ok ? 'Hello world!' : 'Hello world! (log skipped)';
+  var message = result.message || 'Hello world!';
 
   return ContentService.createTextOutput(message).setMimeType(
     ContentService.MimeType.TEXT
@@ -16,7 +21,17 @@ function doGet(e) {
 }
 
 function main(e) {
-  var logResult = logTouchEvent_(e);
+  var currentDate = getCurrentDate_();
+  var currentSlot = resolveCurrentSlot_();
+
+  if (hasFedTodayForSlot_(currentDate, currentSlot)) {
+    return {
+      ok: true,
+      message: buildAlreadyFedMessage_(currentSlot),
+    };
+  }
+
+  var logResult = logTouchEvent_(e, currentDate, currentSlot);
 
   if (!logResult.ok) {
     return logResult;
@@ -24,14 +39,17 @@ function main(e) {
 
   try {
     sendLineMessage_(buildLineMessage_(logResult));
-    return { ok: true };
+    return {
+      ok: true,
+      message: 'エサをくれてありがとう',
+    };
   } catch (error) {
     console.error(error);
     return { ok: false, message: String(error) };
   }
 }
 
-function logTouchEvent_(e) {
+function logTouchEvent_(e, currentDate, currentSlot) {
   try {
     var sheet = getLogSheet_();
     var params = (e && e.parameter) || {};
@@ -41,6 +59,8 @@ function logTouchEvent_(e) {
     var queryString = getQueryString_(e);
 
     sheet.appendRow([
+      currentDate,
+      currentSlot,
       timestamp,
       'touch',
       token,
@@ -50,6 +70,8 @@ function logTouchEvent_(e) {
 
     return {
       ok: true,
+      date: currentDate,
+      slot: currentSlot,
       timestamp: timestamp,
       token: token,
       pathInfo: pathInfo,
@@ -75,10 +97,37 @@ function getLogSheet_() {
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
-    sheet.appendRow(['timestamp', 'event', 'token', 'pathInfo', 'queryString']);
+    sheet.appendRow([
+      'date',
+      'slot',
+      'timestamp',
+      'event',
+      'token',
+      'pathInfo',
+      'queryString',
+    ]);
   }
 
   return sheet;
+}
+
+function hasFedTodayForSlot_(currentDate, currentSlot) {
+  var sheet = getLogSheet_();
+  var values = sheet.getDataRange().getValues();
+
+  if (values.length <= 1) {
+    return false;
+  }
+
+  for (var i = values.length - 1; i >= 1; i -= 1) {
+    var row = values[i];
+
+    if (String(row[0]) === currentDate && String(row[1]) === currentSlot) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function getPathInfo_(e) {
@@ -101,14 +150,42 @@ function getCurrentTimestamp_() {
   return Utilities.formatDate(new Date(), LOG_TIME_ZONE, LOG_TIMESTAMP_FORMAT);
 }
 
+function getCurrentDate_() {
+  return Utilities.formatDate(new Date(), LOG_TIME_ZONE, LOG_DATE_FORMAT);
+}
+
+function resolveCurrentSlot_() {
+  var currentTime = Utilities.formatDate(new Date(), LOG_TIME_ZONE, 'HH:mm');
+
+  if (
+    currentTime >= MORNING_UNLOCK_TIME &&
+    currentTime < EVENING_UNLOCK_TIME
+  ) {
+    return MORNING_SLOT;
+  }
+
+  return EVENING_SLOT;
+}
+
 function buildLineMessage_(logResult) {
-  var lines = ['Dog feeding touch detected', 'Time: ' + logResult.timestamp];
+  var lines = [
+    '今日の' + getSlotLabel_(logResult.slot) + 'にエサもらいます',
+    'Time: ' + logResult.timestamp,
+  ];
 
   if (logResult.token) {
     lines.push('Token: ' + logResult.token);
   }
 
   return lines.join('\n');
+}
+
+function buildAlreadyFedMessage_(slot) {
+  return '今日の' + getSlotLabel_(slot) + 'はすでに食べています';
+}
+
+function getSlotLabel_(slot) {
+  return slot === MORNING_SLOT ? '朝' : '夜';
 }
 
 function sendLineMessage_(text) {
