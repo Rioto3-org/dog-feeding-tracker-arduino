@@ -36,8 +36,13 @@ function testMain() {
 function main(e) {
   var currentDate = getCurrentDate_();
   var currentSlot = resolveCurrentSlot_();
+  var latestLogRecord = getLatestLogRecord_();
 
-  if (hasFedTodayForSlot_(currentDate, currentSlot)) {
+  if (
+    latestLogRecord &&
+    latestLogRecord.date === currentDate &&
+    latestLogRecord.slot === currentSlot
+  ) {
     return {
       ok: true,
       message: buildAlreadyFedMessage_(currentSlot),
@@ -124,23 +129,20 @@ function getLogSheet_() {
   return sheet;
 }
 
-function hasFedTodayForSlot_(currentDate, currentSlot) {
+function getLatestLogRecord_() {
   var sheet = getLogSheet_();
   var values = sheet.getDataRange().getValues();
 
   if (values.length <= 1) {
-    return false;
+    return null;
   }
 
-  for (var i = values.length - 1; i >= 1; i -= 1) {
-    var row = values[i];
+  var row = values[values.length - 1];
 
-    if (String(row[0]) === currentDate && String(row[1]) === currentSlot) {
-      return true;
-    }
-  }
-
-  return false;
+  return {
+    date: normalizeDateValue_(row[0]),
+    slot: normalizeSlotValue_(row[1]),
+  };
 }
 
 function getPathInfo_(e) {
@@ -165,6 +167,18 @@ function getCurrentTimestamp_() {
 
 function getCurrentDate_() {
   return Utilities.formatDate(new Date(), LOG_TIME_ZONE, LOG_DATE_FORMAT);
+}
+
+function normalizeDateValue_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, LOG_TIME_ZONE, LOG_DATE_FORMAT);
+  }
+
+  return String(value || '').trim();
+}
+
+function normalizeSlotValue_(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function resolveCurrentSlot_() {
