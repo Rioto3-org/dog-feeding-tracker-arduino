@@ -195,16 +195,7 @@ function resolveCurrentSlot_() {
 }
 
 function buildLineMessage_(logResult) {
-  var lines = [
-    '今日の' + getSlotLabel_(logResult.slot) + 'にエサもらいます',
-    'Time: ' + logResult.timestamp,
-  ];
-
-  if (logResult.token) {
-    lines.push('Token: ' + logResult.token);
-  }
-
-  return lines.join('\n');
+  return '今日の' + getSlotLabel_(logResult.slot) + 'にエサもらいます';
 }
 
 function buildAlreadyFedMessage_(slot) {
